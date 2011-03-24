@@ -15,10 +15,10 @@ var server = Connect.createServer(
 		});
         
 		/**
-		 * /fetch/origin|[xslt|jslt]/[compressed|original|raw].[rss|atom|json]
+		 * /fetch/:origin|[:xslt|:jslt|null]/[processed|raw].[rss|atom|json]|:callback
 		 * /fetch/http%3A%2F%2Fjeffremer.com%2Fposts%2Frss.xml|http%3A%2F%2Ffoo.com%2Fjslt.js/compressed.json
 		 */ 
-		app.get(/fetch\/(.+)\|(.+)\/(compressed|original|raw)\.(rss|atom|json)/, function(req, res){
+		app.get(/fetch\/(.+)\|(.+)\/(processed|raw)\.(rss|atom|json)\|(.+)/, function(req, res){
 			sys.puts(sys.inspect(req.params));
 			res.text(req.params.join(', '));
 		});
