@@ -20,6 +20,8 @@ var PARAMS = {
 	CALLBACK: 4
 };	
 
+var debug = true;
+
 var server = Connect.createServer(
 	quip(),
     Connect.router(function(app){
@@ -36,11 +38,52 @@ var server = Connect.createServer(
 			var p = request.params;
 				proxy = new ProxyRequest(p[PARAMS.ORIGIN],
 										 p[PARAMS.TRANSFORM],
-										 p[PARAMS.PROCESS] == "processed",
-										 p[PARAMS.OUTPUT],
-										 p[PARAMS.CALLBACK],
-										 response);				
-		    proxy.fetch();
+										 p[PARAMS.PROCESS] == "processed"),
+				callback = p[PARAMS.CALLBACK],
+				output = p[PARAMS.OUTPUT];
+
+			switch(output) {	
+				case 'json':
+				case 'rss':
+				case 'atom':
+				case 'html':
+					output = output;
+					break;
+				default:
+					output = 'text';			
+			}
+			
+			if(callback && output === 'json') ouput = 'jsonp';
+			var filename = ['response',output].join('.');
+
+		    proxy.fetch().on('complete', function(originData, transformData) {
+					var result;
+					if(transformData) {
+						var codeSandbox = {
+							DATA: originData,
+							RESULT: '',
+							_:_
+						};
+					
+						try {
+							var Script = process.binding('evals').Script;
+							if(transformData) Script.runInNewContext(transformData, codeSandbox);
+						} catch (err) {
+							var error = JSON.stringify({success: false, error: err.message})
+							var result = error;
+							response.end(result, "binary");	
+							return false;
+						}					
+						result = codeSandbox.RESULT;
+					} else {
+						result = originData;
+					}
+					
+					if(callback) result = [callback, '(', JSON.stringify(result) ,')'].join('');
+					if(!_(result).isString()) result = JSON.stringify(result);
+					
+					response[output].call(response, result);
+			});
 		});
 	})
 );
